@@ -1,0 +1,353 @@
+body, html {
+    margin: 0;
+    padding: 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    background-color: #f0f2f5; /* Light gray background */
+    color: #333;
+    overscroll-behavior-y: contain; /* Prevents pull-to-refresh in TWA */
+    height: 100%;
+    overflow: hidden; /* Prevent body scroll, content-area will scroll */
+}
+
+.app-container {
+    display: flex;
+    flex-direction: column;
+    height: 100vh; /* Full viewport height */
+    max-width: 600px; /* Max width for web view, TWA usually constrained */
+    margin: 0 auto;
+    background-color: #ffffff; /* White app background */
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+}
+
+.content-area {
+    flex-grow: 1;
+    overflow-y: auto;
+    padding: 15px;
+    padding-bottom: 70px; /* Space for bottom nav */
+}
+
+.page {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.hidden {
+    display: none !important;
+}
+
+/* Theme Blue */
+:root {
+    --primary-blue: #007bff;
+    --light-blue: #e0f0ff;
+    --dark-blue: #0056b3;
+    --text-on-blue: #ffffff;
+}
+
+h2 {
+    color: var(--primary-blue);
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* Loader */
+.loader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(255, 255, 255, 0.9);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 1.5em;
+    color: var(--primary-blue);
+    z-index: 9999;
+}
+
+/* Bottom Navigation */
+.bottom-nav {
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    max-width: 600px; /* Consistent with app-container */
+    margin: 0 auto; /* Center it */
+    height: 60px;
+    background-color: var(--primary-blue);
+    color: var(--text-on-blue);
+    box-shadow: 0 -2px 5px rgba(0,0,0,0.1);
+    z-index: 1000;
+}
+
+.nav-btn {
+    background: none;
+    border: none;
+    color: var(--light-blue);
+    font-size: 0.8em;
+    padding: 10px 5px;
+    cursor: pointer;
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.nav-btn.active {
+    color: var(--text-on-blue);
+    font-weight: bold;
+    background-color: var(--dark-blue); /* Highlight active tab */
+}
+
+.nav-btn:hover:not(.active) {
+    background-color: rgba(255,255,255,0.1);
+}
+
+/* Tap Section */
+#tap-section {
+    text-align: center;
+}
+.tap-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 10px;
+    background-color: var(--light-blue);
+    border-radius: 8px;
+}
+.points-display, .energy-bar-container {
+    font-size: 1.1em;
+    color: var(--dark-blue);
+}
+.energy-bar-container {
+    text-align: right;
+}
+.energy-bar {
+    width: 120px;
+    height: 15px;
+    background-color: #ccc;
+    border-radius: 7px;
+    margin-top: 5px;
+    overflow: hidden;
+    border: 1px solid var(--dark-blue);
+}
+.energy-fill {
+    height: 100%;
+    background-color: #4CAF50; /* Green for energy */
+    width: 100%; /* Default to full */
+    border-radius: 7px 0 0 7px;
+    transition: width 0.2s ease-in-out;
+}
+.cat-container {
+    position: relative; /* For floating +1s */
+    margin: 30px auto;
+    width: 200px; /* Adjust as needed */
+    height: 200px; /* Adjust as needed */
+}
+.cat-image {
+    width: 100%;
+    height: 100%;
+    cursor: pointer;
+    border-radius: 50%; /* Circular cat */
+    box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+    transition: transform 0.1s ease;
+    user-select: none; /* Prevent image selection */
+    -webkit-user-drag: none; /* Prevent image dragging */
+}
+.cat-image:active {
+    transform: scale(0.95);
+}
+.floating-plus-one {
+    position: absolute;
+    font-size: 1.5em;
+    color: var(--primary-blue);
+    font-weight: bold;
+    animation: floatUp 1s ease-out forwards;
+    pointer-events: none; /* So it doesn't interfere with cat clicks */
+    user-select: none;
+}
+@keyframes floatUp {
+    0% { transform: translateY(0); opacity: 1; }
+    100% { transform: translateY(-50px); opacity: 0; }
+}
+
+
+/* Profile Section */
+.profile-info p {
+    background-color: var(--light-blue);
+    padding: 10px;
+    border-radius: 5px;
+    margin-bottom: 10px;
+    font-size: 0.95em;
+}
+.profile-info strong {
+    color: var(--dark-blue);
+}
+#profile-referral-link {
+    width: calc(100% - 70px);
+    padding: 8px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    margin-right: 5px;
+}
+#copy-referral-link {
+    padding: 8px 10px;
+    background-color: var(--primary-blue);
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+}
+
+/* Task Section */
+.task-list {
+    list-style: none;
+    padding: 0;
+}
+.task-list li {
+    background-color: #f9f9f9;
+    border: 1px solid #eee;
+    padding: 15px;
+    margin-bottom: 10px;
+    border-radius: 8px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.task-list li.completed {
+    background-color: #e6ffe6; /* Light green for completed */
+    opacity: 0.7;
+}
+.task-list li.completed .task-action button {
+    background-color: #aaa;
+    cursor: not-allowed;
+}
+.task-title {
+    font-weight: bold;
+    color: var(--dark-blue);
+}
+.task-reward {
+    font-size: 0.9em;
+    color: #555;
+}
+.task-action button {
+    background-color: var(--primary-blue);
+    color: white;
+    border: none;
+    padding: 8px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+.task-action button:hover {
+    background-color: var(--dark-blue);
+}
+
+
+/* Ads Section */
+#ads-section p, #withdraw-section p {
+    margin-bottom: 15px;
+}
+#watch-ad-button {
+    background-color: #28a745; /* Green for watch ad */
+    color: white;
+    padding: 12px 20px;
+    font-size: 1.1em;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    display: block;
+    margin: 20px auto;
+}
+#watch-ad-button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+}
+
+/* Withdraw Section */
+.withdraw-options {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+.withdraw-option {
+    background-color: var(--light-blue);
+    padding: 15px;
+    border-radius: 8px;
+    border: 1px solid var(--primary-blue);
+}
+.withdraw-option h3 {
+    margin-top: 0;
+    color: var(--dark-blue);
+}
+.withdraw-btn {
+    background-color: var(--primary-blue);
+    color: white;
+    padding: 10px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+#withdraw-form {
+    margin-top: 20px;
+    padding: 15px;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+}
+#withdraw-form label {
+    display: block;
+    margin-top: 10px;
+    font-weight: bold;
+}
+#withdraw-form input[type="text"], #withdraw-form select {
+    width: calc(100% - 22px); /* Account for padding and border */
+    padding: 10px;
+    margin-top: 5px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+}
+#submit-withdrawal-button {
+    background-color: #28a745;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    margin-top: 15px;
+    cursor: pointer;
+}
+#withdrawal-history-list {
+    list-style-type: none;
+    padding: 0;
+}
+#withdrawal-history-list li {
+    background-color: #f1f1f1;
+    padding: 10px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    font-size: 0.9em;
+}
+
+.message {
+    margin-top: 10px;
+    padding: 10px;
+    border-radius: 5px;
+    text-align: center;
+}
+.message.success {
+    background-color: #d4edda;
+    color: #155724;
+}
+.message.error {
+    background-color: #f8d7da;
+    color: #721c24;
+}
