@@ -26,6 +26,7 @@
                     <p><strong>Referral Link:</strong> <input type="text" id="profile-referral-link" readonly><button id="copy-referral-link">Copy</button></p>
                     <p><strong>Total Referrals:</strong> <span id="profile-referrals-count">0</span></p>
                 </div>
+                 <p id="profile-message" class="message"></p>
             </div>
 
             <!-- Tap Section -->
@@ -40,7 +41,8 @@
                     </div>
                 </div>
                 <div class="cat-container">
-                    <img src="https://placekitten.com/200/200" alt="Tap Cat" id="cat-to-tap" class="cat-image">
+                    <!-- MODIFIED IMAGE HERE: Assuming rat_image.png is in an 'assets' folder -->
+                    <img src="assets/rat_image.png" alt="Tap to Earn" id="animal-to-tap" class="cat-image">
                     <!-- Floating +1s -->
                 </div>
                 <p>Taps Today: <span id="taps-today">0</span> / 2500</p>
@@ -98,7 +100,7 @@
                 <p id="withdraw-message" class="message"></p>
                 <h3>Withdrawal History</h3>
                 <ul id="withdrawal-history-list">
-                    <!-- History items will be populated here -->
+                    <li>Loading history...</li>
                 </ul>
             </div>
         </div>
