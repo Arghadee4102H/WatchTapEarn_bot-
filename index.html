@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>WatchTapEarn</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Monetag SDK -->
+    <script src='//solseewuthi.net/sdk.js' data-zone='9338274' data-sdk='show_9338274'></script>
+</head>
+<body>
+    <div class="app-container">
+        <div id="loader" class="loader">Loading...</div>
+
+        <div class="content-area">
+            <!-- Profile Section -->
+            <div id="profile-section" class="page hidden">
+                <h2>Profile</h2>
+                <div class="profile-info">
+                    <p><strong>Username:</strong> <span id="profile-username">N/A</span></p>
+                    <p><strong>User ID:</strong> <span id="profile-userid">N/A</span></p>
+                    <p><strong>Points:</strong> <span id="profile-points">0</span></p>
+                    <p><strong>Joined:</strong> <span id="profile-joindate">N/A</span></p>
+                    <p><strong>Referral Link:</strong> <input type="text" id="profile-referral-link" readonly><button id="copy-referral-link">Copy</button></p>
+                    <p><strong>Total Referrals:</strong> <span id="profile-referrals-count">0</span></p>
+                </div>
+            </div>
+
+            <!-- Tap Section -->
+            <div id="tap-section" class="page">
+                <div class="tap-header">
+                    <div class="points-display">Points: <span id="tap-points">0</span></div>
+                    <div class="energy-bar-container">
+                        ⚡ Energy: <span id="energy-value">100</span> / <span id="max-energy-value">100</span>
+                        <div class="energy-bar">
+                            <div id="energy-fill" class="energy-fill"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="cat-container">
+                    <img src="https://placekitten.com/200/200" alt="Tap Cat" id="cat-to-tap" class="cat-image">
+                    <!-- Floating +1s -->
+                </div>
+                <p>Taps Today: <span id="taps-today">0</span> / 2500</p>
+                 <p id="tap-message" class="message"></p>
+            </div>
+
+            <!-- Task Section -->
+            <div id="task-section" class="page hidden">
+                <h2>Daily Tasks</h2>
+                <p>Complete tasks to earn points. Tasks refresh daily (UTC).</p>
+                <p id="task-message" class="message"></p>
+                <ul id="task-list" class="task-list">
+                    <!-- Tasks will be populated by JavaScript -->
+                </ul>
+            </div>
+
+            <!-- Watch Ads Section -->
+            <div id="ads-section" class="page hidden">
+                <h2>Watch Ads</h2>
+                <p>Watch ads to earn 40 points per ad. Max 45 ads per day.</p>
+                <p>Ads watched today: <span id="ads-watched-count">0</span> / 45</p>
+                <button id="watch-ad-button">Watch Rewarded Ad</button>
+                <p id="ad-status-message" class="message"></p>
+            </div>
+
+            <!-- Withdraw Section -->
+            <div id="withdraw-section" class="page hidden">
+                <h2>Withdraw Points</h2>
+                <p>Current Points: <span id="withdraw-points-display">0</span></p>
+                <div class="withdraw-options">
+                    <div class="withdraw-option">
+                        <h3>86,000 Points ($6 USD equivalent)</h3>
+                        <button class="withdraw-btn" data-points="86000" data-usd="6">Withdraw</button>
+                    </div>
+                    <div class="withdraw-option">
+                        <h3>165,000 Points ($12 USD equivalent)</h3>
+                        <button class="withdraw-btn" data-points="165000" data-usd="12">Withdraw</button>
+                    </div>
+                    <div class="withdraw-option">
+                        <h3>305,000 Points ($24 USD equivalent)</h3>
+                        <button class="withdraw-btn" data-points="305000" data-usd="24">Withdraw</button>
+                    </div>
+                </div>
+                <div id="withdraw-form" class="hidden">
+                    <h4>Withdraw <span id="withdraw-amount-text"></span> Points</h4>
+                    <label for="payment-method">Payment Method:</label>
+                    <select id="payment-method">
+                        <option value="TON">TON Wallet Address</option>
+                        <option value="BinancePayID">Binance Pay ID</option>
+                    </select>
+                    <label for="wallet-address">Wallet Address / Pay ID:</label>
+                    <input type="text" id="wallet-address" placeholder="Enter your address/ID">
+                    <button id="submit-withdrawal-button">Submit Withdrawal</button>
+                </div>
+                <p id="withdraw-message" class="message"></p>
+                <h3>Withdrawal History</h3>
+                <ul id="withdrawal-history-list">
+                    <!-- History items will be populated here -->
+                </ul>
+            </div>
+        </div>
+
+        <nav class="bottom-nav">
+            <button data-page="profile-section" class="nav-btn">👤 Profile</button>
+            <button data-page="tap-section" class="nav-btn active">👆 Tap</button>
+            <button data-page="task-section" class="nav-btn">📋 Tasks</button>
+            <button data-page="ads-section" class="nav-btn">📺 Ads</button>
+            <button data-page="withdraw-section" class="nav-btn">💸 Withdraw</button>
+        </nav>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
