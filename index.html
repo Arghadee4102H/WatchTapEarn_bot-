@@ -5,9 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>WatchTapEarn</title>
     <link rel="stylesheet" href="style.css">
-    <!-- Telegram WebApp SDK -->
     <script src="https://telegram.org/js/telegram-web-app.js"></script>
-    <!-- Monetag SDK -->
     <script src='//solseewuthi.net/sdk.js' data-zone='9338274' data-sdk='show_9338274'></script>
 </head>
 <body>
@@ -41,9 +39,7 @@
                     </div>
                 </div>
                 <div class="cat-container">
-                    <!-- MODIFIED IMAGE HERE: Assuming rat_image.png is in an 'assets' folder -->
                     <img src="assets/rat_image.png" alt="Tap to Earn" id="animal-to-tap" class="cat-image">
-                    <!-- Floating +1s -->
                 </div>
                 <p>Taps Today: <span id="taps-today">0</span> / 2500</p>
                  <p id="tap-message" class="message"></p>
@@ -54,15 +50,13 @@
                 <h2>Daily Tasks</h2>
                 <p>Complete tasks to earn points. Tasks refresh daily (UTC).</p>
                 <p id="task-message" class="message"></p>
-                <ul id="task-list" class="task-list">
-                    <!-- Tasks will be populated by JavaScript -->
-                </ul>
+                <ul id="task-list" class="task-list"></ul>
             </div>
 
             <!-- Watch Ads Section -->
             <div id="ads-section" class="page hidden">
                 <h2>Watch Ads</h2>
-                <p>Watch ads to earn 40 points per ad. Max 45 ads per day.</p>
+                <p>Watch ads to earn <span id="points-per-ad-info">40</span> points per ad. Max 45 ads per day.</p>
                 <p>Ads watched today: <span id="ads-watched-count">0</span> / 45</p>
                 <button id="watch-ad-button">Watch Rewarded Ad</button>
                 <p id="ad-status-message" class="message"></p>
@@ -113,7 +107,6 @@
             <button data-page="withdraw-section" class="nav-btn">💸 Withdraw</button>
         </nav>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
