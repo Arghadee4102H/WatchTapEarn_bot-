@@ -1,14 +1,13 @@
 document.addEventListener('DOMContentLoaded', () => {
     const tg = window.Telegram.WebApp;
-    tg.ready(); // Inform Telegram that the app is ready
-    tg.expand(); // Expand the WebApp to full height
+    tg.ready();
+    tg.expand();
 
-    const API_URL = 'api.php'; // Your backend API endpoint
+    const API_URL = 'api.php';
 
-    // Global state
     let currentUser = null;
     let currentEnergyInterval = null;
-    let dailyTasks = [ // Hardcoded tasks
+    const dailyTasks = [
         { id: 1, title: "Join Telegram Channel 1", link: "https://t.me/Watchtapearn", reward: 50, type: "channel" },
         { id: 2, title: "Join Telegram Group", link: "https://t.me/Watchtapearnchat", reward: 50, type: "group" },
         { id: 3, title: "Join Telegram Channel 2", link: "https://t.me/earningsceret", reward: 50, type: "channel" },
@@ -16,7 +15,6 @@ document.addEventListener('DOMContentLoaded', () => {
     ];
     let selectedWithdrawal = null;
 
-    // UI Elements
     const loader = document.getElementById('loader');
     const pages = document.querySelectorAll('.page');
     const navButtons = document.querySelectorAll('.nav-btn');
@@ -28,16 +26,16 @@ document.addEventListener('DOMContentLoaded', () => {
     const profileReferralLink = document.getElementById('profile-referral-link');
     const copyReferralLinkBtn = document.getElementById('copy-referral-link');
     const profileReferralsCount = document.getElementById('profile-referrals-count');
+    const profileMessage = document.getElementById('profile-message');
 
     const tapPointsDisplay = document.getElementById('tap-points');
     const energyValueDisplay = document.getElementById('energy-value');
     const maxEnergyValueDisplay = document.getElementById('max-energy-value');
     const energyFill = document.getElementById('energy-fill');
-    const catToTap = document.getElementById('cat-to-tap');
+    const animalToTap = document.getElementById('animal-to-tap'); // Changed ID
     const tapsTodayDisplay = document.getElementById('taps-today');
     const tapMessage = document.getElementById('tap-message');
-    const catContainer = document.querySelector('.cat-container');
-
+    const animalContainer = document.querySelector('.cat-container'); // Changed class if needed
 
     const taskListUl = document.getElementById('task-list');
     const taskMessage = document.getElementById('task-message');
@@ -56,8 +54,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const withdrawMessage = document.getElementById('withdraw-message');
     const withdrawalHistoryList = document.getElementById('withdrawal-history-list');
 
-
-    // --- UTILITY FUNCTIONS ---
     function showLoader() { loader.style.display = 'flex'; }
     function hideLoader() { loader.style.display = 'none'; }
 
@@ -65,180 +61,217 @@ document.addEventListener('DOMContentLoaded', () => {
         pages.forEach(page => page.classList.add('hidden'));
         document.getElementById(pageId).classList.remove('hidden');
         navButtons.forEach(btn => btn.classList.remove('active'));
-        document.querySelector(`.nav-btn[data-page="${pageId}"]`).classList.add('active');
-        // Special updates when a page is shown
-        if (pageId === 'withdraw-section') fetchWithdrawalHistory();
+        const activeBtn = document.querySelector(`.nav-btn[data-page="${pageId}"]`);
+        if (activeBtn) activeBtn.classList.add('active');
+        
+        // Clear messages when switching pages
+        clearAllMessages();
+
+        if (pageId === 'withdraw-section' && currentUser) fetchWithdrawalHistory();
+        if (pageId === 'task-section' && currentUser) renderTasks(); // Re-render tasks to get latest status
+        if (pageId === 'ads-section' && currentUser) checkAdButtonState(); // Update ad button state
+    }
+    
+    function clearAllMessages() {
+        document.querySelectorAll('.message').forEach(el => {
+            el.textContent = '';
+            el.className = 'message';
+        });
     }
 
-    async function apiCall(action, data = {}) {
+    async function apiCall(action, data = {}, method = 'POST') {
         showLoader();
         try {
             const tgUserData = tg.initDataUnsafe.user || {};
+             const defaultUserId = localStorage.getItem('debugUserId') || Date.now().toString().slice(-6); // More unique debug ID
+            localStorage.setItem('debugUserId', defaultUserId);
+
             const params = new URLSearchParams({
                 action: action,
-                telegram_user_id: tgUserData.id || 'test_user_123', // Fallback for local testing
-                telegram_username: tgUserData.username || 'testuser',
+                telegram_user_id: tgUserData.id || defaultUserId,
+                telegram_username: tgUserData.username || `testuser_${defaultUserId}`,
                 telegram_first_name: tgUserData.first_name || 'Test',
+                telegram_init_data: tg.initData || '', // Send full initData for server-side validation
                 ...data
             });
-
-            // For POST requests if needed, but GET/URLSearchParams is fine for many actions
+            
             const response = await fetch(API_URL, {
-                method: 'POST', // Using POST for all actions for consistency
+                method: method,
                 headers: {
                     'Content-Type': 'application/x-www-form-urlencoded',
                 },
                 body: params.toString()
             });
-            if (!response.ok) {
-                const errorData = await response.json().catch(() => ({ message: 'Network error' }));
-                throw new Error(errorData.message || `HTTP error! status: ${response.status}`);
+
+            const resultText = await response.text();
+            let result;
+            try {
+                result = JSON.parse(resultText);
+            } catch (e) {
+                console.error("Failed to parse JSON response:", resultText);
+                throw new Error("Invalid server response. Please check server logs.");
             }
-            const result = await response.json();
-            if (!result.success) {
-                throw new Error(result.message || 'API request failed');
+            
+            if (!response.ok || !result.success) {
+                throw new Error(result.message || `API request failed (${action})`);
             }
             return result;
         } catch (error) {
             console.error(`API call error (${action}):`, error);
-            showMessage(error.message || 'An unexpected error occurred.', 'error', 'tap-message'); // General message
-            return null; // Or throw error to be caught by caller
+            showMessage(error.message || 'An unexpected error occurred.', 'error', 'tap-message'); // General message area
+            return null;
         } finally {
             hideLoader();
         }
     }
     
-    function showMessage(message, type = 'info', elementId = 'tap-message') {
-        const msgEl = document.getElementById(elementId);
-        if (!msgEl) return;
+    function showMessage(message, type = 'info', elementIdSuffix = 'message') {
+        let targetElementId = 'tap-message'; // Default
+        const currentPageId = document.querySelector('.page:not(.hidden)')?.id;
+
+        if (currentPageId) {
+            if (currentPageId === 'profile-section') targetElementId = 'profile-message';
+            else if (currentPageId === 'task-section') targetElementId = 'task-message';
+            else if (currentPageId === 'ads-section') targetElementId = 'ad-status-message';
+            else if (currentPageId === 'withdraw-section') targetElementId = 'withdraw-message';
+        }
+        
+        const msgEl = document.getElementById(targetElementId);
+        if (!msgEl) {
+            console.warn("Message element not found for ID:", targetElementId);
+            return;
+        }
         msgEl.textContent = message;
-        msgEl.className = `message ${type}`; // success, error, info
-        setTimeout(() => {
-            msgEl.textContent = '';
-            msgEl.className = 'message';
-        }, 3000);
+        msgEl.className = `message ${type}`;
+        
+        // Auto-clear message after some time, unless it's an error that needs attention
+        if (type !== 'error') {
+            setTimeout(() => {
+                if (msgEl.textContent === message) { // Clear only if it's the same message
+                    msgEl.textContent = '';
+                    msgEl.className = 'message';
+                }
+            }, 3500);
+        }
     }
 
-
-    // --- INITIALIZATION ---
     async function initializeApp() {
         if (!tg.initDataUnsafe || !tg.initDataUnsafe.user) {
-            // For local testing without Telegram environment
-            console.warn("Telegram UserData not found. Using mock data. Functionality may be limited.");
-            // You might want to prompt for a test user ID or use a default
+            console.warn("Telegram UserData not found. Using mock data. Ensure you test in Telegram environment.");
         }
         
         const startParam = tg.initDataUnsafe.start_param;
         let initialData = {};
         if (startParam) {
             initialData.referrer_id = startParam;
+            console.log("Referrer ID from start_param:", startParam);
         }
 
         const data = await apiCall('getUserData', initialData);
-        if (data && data.success) {
+        if (data && data.success && data.user) {
             currentUser = data.user;
             updateUI();
             startEnergyRegeneration();
+            showPage('tap-section'); // Default page
         } else {
-            showMessage('Failed to load user data. Please try again.', 'error', 'tap-message');
-            // Potentially block app usage or show a retry button
+            showMessage('Failed to load user data. Please restart the app.', 'error');
         }
     }
 
-    // --- UI UPDATE FUNCTIONS ---
     function updateUI() {
         if (!currentUser) return;
 
-        // Global points update
-        tapPointsDisplay.textContent = currentUser.points;
-        profilePoints.textContent = currentUser.points;
-        withdrawPointsDisplay.textContent = currentUser.points;
+        tapPointsDisplay.textContent = currentUser.points.toLocaleString();
+        profilePoints.textContent = currentUser.points.toLocaleString();
+        withdrawPointsDisplay.textContent = currentUser.points.toLocaleString();
 
-        // Profile
         profileUsername.textContent = currentUser.username || 'N/A';
         profileUserid.textContent = currentUser.user_id;
-        profileJoindate.textContent = new Date(currentUser.join_date).toLocaleDateString();
-        profileReferralLink.value = `https://t.me/WatchTapEarn_bot?start=${currentUser.user_id}`;
+        profileJoindate.textContent = currentUser.join_date ? new Date(currentUser.join_date).toLocaleDateString() : 'N/A';
+        profileReferralLink.value = `https://t.me/WatchTapEarn_bot?start=${currentUser.user_id}`; // Replace YOUR_BOT_USERNAME
         profileReferralsCount.textContent = currentUser.referral_count;
 
-        // Tap Section
         energyValueDisplay.textContent = Math.floor(currentUser.energy);
         maxEnergyValueDisplay.textContent = currentUser.max_energy;
-        energyFill.style.width = `${(currentUser.energy / currentUser.max_energy) * 100}%`;
+        const energyPercentage = currentUser.max_energy > 0 ? (currentUser.energy / currentUser.max_energy) * 100 : 0;
+        energyFill.style.width = `${Math.max(0, Math.min(100, energyPercentage))}%`;
         tapsTodayDisplay.textContent = currentUser.taps_today;
         
-        // Task Section
-        renderTasks();
-
-        // Ads Section
-        adsWatchedCountDisplay.textContent = currentUser.ads_watched_today;
-        checkAdButtonState();
+        renderTasks(); // Update task list as user data might have changed task completion status
+        checkAdButtonState(); // Update ad button state
     }
 
-    // --- ENERGY REGENERATION ---
     function startEnergyRegeneration() {
         if (currentEnergyInterval) clearInterval(currentEnergyInterval);
         
         currentEnergyInterval = setInterval(() => {
             if (currentUser && currentUser.energy < currentUser.max_energy) {
-                // Client-side optimistic update for smoother UI
-                const energyToAdd = currentUser.energy_per_second; // This is per second
+                const energyToAdd = currentUser.energy_per_second;
                 currentUser.energy = Math.min(currentUser.max_energy, currentUser.energy + energyToAdd);
+                
+                // Only update display, server handles true energy
                 energyValueDisplay.textContent = Math.floor(currentUser.energy);
-                energyFill.style.width = `${(currentUser.energy / currentUser.max_energy) * 100}%`;
+                const energyPercentage = currentUser.max_energy > 0 ? (currentUser.energy / currentUser.max_energy) * 100 : 0;
+                energyFill.style.width = `${Math.max(0, Math.min(100, energyPercentage))}%`;
             } else if (currentUser && currentUser.energy >= currentUser.max_energy) {
-                currentUser.energy = currentUser.max_energy; // Cap it
+                currentUser.energy = currentUser.max_energy;
                 energyValueDisplay.textContent = Math.floor(currentUser.energy);
                 energyFill.style.width = `100%`;
             }
-            // Server syncs energy on actual tap or other actions.
-        }, 1000); // Update UI every second
+        }, 1000);
     }
 
-
-    // --- TAP SECTION LOGIC ---
-    catToTap.addEventListener('click', async (event) => {
-        if (!currentUser || currentUser.energy <= 0) {
+    animalToTap.addEventListener('click', async (event) => {
+        if (!currentUser) {
+            showMessage('User data not loaded. Please wait.', 'error', 'tap-message');
+            return;
+        }
+        if (currentUser.energy < 1) { // Assuming 1 energy per tap from ENERGY_PER_TAP constant
             showMessage('Not enough energy!', 'error', 'tap-message');
+            tg.HapticFeedback.notificationOccurred('error');
             return;
         }
-        if (currentUser.taps_today >= 2500) { // Max daily taps from constant
+        if (currentUser.taps_today >= 2500) {
             showMessage('Daily tap limit reached!', 'error', 'tap-message');
+            tg.HapticFeedback.notificationOccurred('error');
             return;
         }
 
-        // Optimistic UI update for tap
-        currentUser.energy -= 1; // Assuming 1 energy per tap
-        currentUser.points += 1; // Assuming 1 point per tap
+        currentUser.energy -= 1; 
+        currentUser.points += 1; 
         currentUser.taps_today += 1;
-        updateUI(); // Quick update for energy and points
+        updateUI(); // Optimistic UI update
 
-        // Show +1 animation
         const plusOne = document.createElement('div');
         plusOne.textContent = '+1';
         plusOne.classList.add('floating-plus-one');
-        plusOne.style.left = `${event.clientX - catContainer.getBoundingClientRect().left - 10}px`;
-        plusOne.style.top = `${event.clientY - catContainer.getBoundingClientRect().top - 20}px`;
-        catContainer.appendChild(plusOne);
+        const rect = animalToTap.getBoundingClientRect(); // Use animalToTap's rect
+        const containerRect = animalContainer.getBoundingClientRect();
+        plusOne.style.left = `${event.clientX - containerRect.left - 10}px`;
+        plusOne.style.top = `${event.clientY - containerRect.top - 20}px`;
+        animalContainer.appendChild(plusOne);
+        tg.HapticFeedback.impactOccurred('light');
         setTimeout(() => plusOne.remove(), 1000);
 
-
-        // Server call
         const result = await apiCall('tap');
-        if (result && result.success) {
+        if (result && result.success && result.user) {
             currentUser = result.user; // Sync with server state
             updateUI(); // Full update
         } else {
-            // Revert optimistic update if server call fails (or handle more gracefully)
-            // For now, rely on next full update or getUserData call
+            // Revert optimistic update or just show error and rely on next full sync
             showMessage(result ? result.message : 'Tap failed to register.', 'error', 'tap-message');
+            // Silently refetch user data to correct optimistic updates if tap failed
+            const freshUserData = await apiCall('getUserData');
+            if (freshUserData && freshUserData.success && freshUserData.user) {
+                currentUser = freshUserData.user;
+                updateUI();
+            }
         }
     });
 
-    // --- TASK SECTION LOGIC ---
     function renderTasks() {
-        if (!currentUser) return;
-        taskListUl.innerHTML = ''; // Clear existing tasks
+        if (!currentUser || !taskListUl) return;
+        taskListUl.innerHTML = '';
         const completedMask = currentUser.daily_tasks_completed_mask || 0;
 
         dailyTasks.forEach(task => {
@@ -262,51 +295,76 @@ document.addEventListener('DOMContentLoaded', () => {
 
         document.querySelectorAll('.claim-task-btn').forEach(button => {
             button.addEventListener('click', async (e) => {
-                const taskId = parseInt(e.target.dataset.taskId);
+                const claimButton = e.target;
+                if (claimButton.disabled) return;
+
+                const taskId = parseInt(claimButton.dataset.taskId);
                 const task = dailyTasks.find(t => t.id === taskId);
-                if (!task || (completedMask & (1 << (taskId - 1))) > 0) return;
+                if (!task) return;
 
-                // Open link in Telegram
-                tg.openTelegramLink(task.link);
-
-                // After a short delay, try to claim. User needs to come back to app.
-                // True verification is hard. This assumes they joined.
-                // Show a temporary message
-                showMessage('Redirecting to Telegram. Return here to confirm task completion if prompted, or it might auto-claim.', 'info', 'task-message');
-
-                // For now, we'll claim it optimistically or prompt them to click again after returning.
-                // Let's try to claim immediately. Backend will check daily limits.
-                // A better UX might be a "Confirm Completion" button after they return.
+                claimButton.disabled = true;
+                claimButton.textContent = 'Processing...';
                 
-                // Attempt to claim
-                const result = await apiCall('claimTask', { task_id: taskId });
-                if (result && result.success) {
-                    currentUser = result.user;
-                    updateUI();
-                    showMessage(`Task "${task.title}" completed! +${task.reward} points.`, 'success', 'task-message');
-                } else {
-                    showMessage(result ? result.message : 'Failed to claim task.', 'error', 'task-message');
-                }
+                tg.openTelegramLink(task.link);
+                showMessage(`Opened ${task.title}. Return to app and task may auto-claim or click again if needed.`, 'info', 'task-message');
+                
+                // Optional: Add a small delay to allow user to switch apps and potentially join
+                // For now, we try to claim, backend will verify.
+                // A better UX is to have a "Verify" button after they return.
+                // For this fix, we'll make the claim more robust.
+
+                // Attempt to claim after a short delay (e.g., 2 seconds) or rely on user clicking again
+                // This timeout is just to give a slight buffer. The real check is on the server.
+                setTimeout(async () => {
+                    // Re-check button state in case another process completed it.
+                    const currentCompletedMask = currentUser.daily_tasks_completed_mask || 0;
+                    if ((currentCompletedMask & (1 << (taskId - 1))) > 0) {
+                        showMessage(`Task "${task.title}" already marked complete.`, 'info', 'task-message');
+                        renderTasks(); // Re-render to update button state
+                        return;
+                    }
+
+                    const result = await apiCall('claimTask', { task_id: taskId });
+                    if (result && result.success && result.user) {
+                        currentUser = result.user;
+                        updateUI(); // This will re-render tasks with new completed state
+                        showMessage(`Task "${task.title}" completed! +${result.points_earned || task.reward} points.`, 'success', 'task-message');
+                        tg.HapticFeedback.notificationOccurred('success');
+                    } else {
+                        showMessage(result ? result.message : 'Failed to claim task. Try again or ensure you joined.', 'error', 'task-message');
+                        // Re-enable button if failed and not already completed by another means
+                        if (!((currentUser.daily_tasks_completed_mask || 0) & (1 << (taskId - 1)))) {
+                           claimButton.disabled = false;
+                           claimButton.textContent = 'Join & Claim';
+                        }
+                    }
+                }, 1500); // Reduced delay, or make it configurable
             });
         });
     }
 
-
-    // --- ADS SECTION LOGIC ---
     function checkAdButtonState() {
-        if (!currentUser) return;
-        const adsLimitReached = currentUser.ads_watched_today >= 45; // Max daily ads from constant
-        const cooldownActive = currentUser.last_ad_watched_timestamp && 
-                               (new Date() - new Date(currentUser.last_ad_watched_timestamp)) < (3 * 60 * 1000); // 3 min cooldown
+        if (!currentUser || !watchAdButton) return;
+        const adsLimitReached = currentUser.ads_watched_today >= 45;
+        let cooldownActive = false;
+        let remainingCooldown = 0;
+
+        if (currentUser.last_ad_watched_timestamp) {
+            const lastAdTime = new Date(currentUser.last_ad_watched_timestamp).getTime();
+            const now = new Date().getTime();
+            const cooldownMillis = 3 * 60 * 1000; // 3 minutes
+            if (now - lastAdTime < cooldownMillis) {
+                cooldownActive = true;
+                remainingCooldown = Math.ceil((cooldownMillis - (now - lastAdTime)) / 1000);
+            }
+        }
 
         if (adsLimitReached) {
             watchAdButton.disabled = true;
             adStatusMessage.textContent = 'Daily ad limit reached.';
         } else if (cooldownActive) {
             watchAdButton.disabled = true;
-            const remainingCooldown = Math.ceil(((3*60*1000) - (new Date() - new Date(currentUser.last_ad_watched_timestamp))) / 1000);
             adStatusMessage.textContent = `Next ad available in ${remainingCooldown}s.`;
-            // Optional: set a timeout to re-enable the button
             setTimeout(checkAdButtonState, 1000); 
         } else {
             watchAdButton.disabled = false;
@@ -315,47 +373,48 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     watchAdButton.addEventListener('click', () => {
-        if (watchAdButton.disabled) return;
+        if (watchAdButton.disabled || !currentUser) return;
 
         adStatusMessage.textContent = 'Loading ad...';
-        watchAdButton.disabled = true;
+        watchAdButton.disabled = true; // Disable button immediately
 
-        // Using Monetag Rewarded Interstitial as an example
-        // The function `show_9338274` is from Monetag's SDK
         if (typeof show_9338274 === 'function') {
             show_9338274() // For Rewarded Interstitial. For Popup: show_9338274('pop')
                 .then(async () => {
-                    // User watched the ad
                     adStatusMessage.textContent = 'Ad completed! Claiming reward...';
                     const result = await apiCall('watchAd');
-                    if (result && result.success) {
-                        currentUser = result.user;
-                        updateUI(); // Update points and ad count
-                        showMessage(`+${result.points_earned || 40} points for watching ad!`, 'success', 'ad-status-message');
+                    if (result && result.success && result.user) {
+                        currentUser = result.user; // CRITICAL: Update currentUser
+                        updateUI(); // CRITICAL: Update UI based on new currentUser
+                        showMessage(`+${result.points_earned || 40} points!`, 'success', 'ad-status-message');
+                        tg.HapticFeedback.notificationOccurred('success');
                     } else {
                         showMessage(result ? result.message : 'Failed to claim ad reward.', 'error', 'ad-status-message');
+                        // If failed, re-fetch user data to be safe
+                        const freshUserData = await apiCall('getUserData');
+                        if (freshUserData && freshUserData.success && freshUserData.user) currentUser = freshUserData.user;
+                        updateUI(); // Update UI even on failure to reflect accurate state
                     }
-                    checkAdButtonState(); // Re-check button state (cooldown, limits)
+                    // checkAdButtonState() will be called by updateUI implicitly
                 })
                 .catch(e => {
-                    // Error during ad playback or user closed it early (for some ad types)
                     console.error('Monetag ad error:', e);
-                    showMessage('Ad could not be shown or was closed early. No reward.', 'error', 'ad-status-message');
+                    showMessage('Ad error or closed early. No reward.', 'error', 'ad-status-message');
                     checkAdButtonState(); // Re-check button state
                 });
         } else {
-            showMessage('Ad SDK not available. Please try again later.', 'error', 'ad-status-message');
-            checkAdButtonState();
+            showMessage('Ad SDK not available.', 'error', 'ad-status-message');
+            checkAdButtonState(); // Re-check button state
         }
     });
 
-
-    // --- WITHDRAW SECTION LOGIC ---
     withdrawButtons.forEach(button => {
         button.addEventListener('click', () => {
+            if (!currentUser) return;
             const pointsNeeded = parseInt(button.dataset.points);
             if (currentUser.points < pointsNeeded) {
-                showMessage(`Not enough points. You need ${pointsNeeded}.`, 'error', 'withdraw-message');
+                showMessage(`Not enough points. You need ${pointsNeeded.toLocaleString()}.`, 'error', 'withdraw-message');
+                tg.HapticFeedback.notificationOccurred('error');
                 return;
             }
             selectedWithdrawal = {
@@ -364,13 +423,13 @@ document.addEventListener('DOMContentLoaded', () => {
             };
             withdrawAmountText.textContent = `${pointsNeeded.toLocaleString()}`;
             withdrawForm.classList.remove('hidden');
-            walletAddressInput.value = ''; // Clear previous input
+            walletAddressInput.value = '';
             withdrawMessage.textContent = '';
         });
     });
 
     submitWithdrawalButton.addEventListener('click', async () => {
-        if (!selectedWithdrawal) return;
+        if (!selectedWithdrawal || !currentUser) return;
 
         const method = paymentMethodSelect.value;
         const addressOrId = walletAddressInput.value.trim();
@@ -379,6 +438,9 @@ document.addEventListener('DOMContentLoaded', () => {
             showMessage('Please enter your wallet address or Pay ID.', 'error', 'withdraw-message');
             return;
         }
+        
+        submitWithdrawalButton.disabled = true;
+        submitWithdrawalButton.textContent = 'Processing...';
 
         const result = await apiCall('requestWithdrawal', {
             points_to_withdraw: selectedWithdrawal.points,
@@ -386,28 +448,33 @@ document.addEventListener('DOMContentLoaded', () => {
             wallet_address_or_id: addressOrId
         });
 
-        if (result && result.success) {
-            currentUser = result.user; // Update user data (points deducted)
+        if (result && result.success && result.user) {
+            currentUser = result.user;
             updateUI();
-            showMessage(`Withdrawal request for ${selectedWithdrawal.points} points submitted! Status: PENDING.`, 'success', 'withdraw-message');
+            showMessage(`Withdrawal request for ${selectedWithdrawal.points.toLocaleString()} points submitted!`, 'success', 'withdraw-message');
+            tg.HapticFeedback.notificationOccurred('success');
             withdrawForm.classList.add('hidden');
             selectedWithdrawal = null;
-            fetchWithdrawalHistory(); // Refresh history
+            fetchWithdrawalHistory();
         } else {
             showMessage(result ? result.message : 'Withdrawal request failed.', 'error', 'withdraw-message');
         }
+        submitWithdrawalButton.disabled = false;
+        submitWithdrawalButton.textContent = 'Submit Withdrawal';
     });
 
     async function fetchWithdrawalHistory() {
+        if (!currentUser) return;
+        withdrawalHistoryList.innerHTML = '<li>Loading history...</li>'; // Show loading state
         const result = await apiCall('getWithdrawalHistory');
-        withdrawalHistoryList.innerHTML = ''; // Clear previous history
+        withdrawalHistoryList.innerHTML = ''; // Clear
         if (result && result.success && result.history) {
             if (result.history.length === 0) {
                 withdrawalHistoryList.innerHTML = '<li>No withdrawal history.</li>';
             } else {
                 result.history.forEach(item => {
                     const li = document.createElement('li');
-                    li.textContent = `${new Date(item.requested_at).toLocaleString()}: ${item.points_withdrawn} points to ${item.method} (${item.wallet_address_or_id.substring(0,10)}...) - Status: ${item.status}`;
+                    li.textContent = `${new Date(item.requested_at).toLocaleString()}: ${item.points_withdrawn.toLocaleString()} points to ${item.method} (${item.wallet_address_or_id.substring(0,10)}...) - Status: ${item.status}`;
                     withdrawalHistoryList.appendChild(li);
                 });
             }
@@ -416,37 +483,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }
     
-    // --- NAVIGATION ---
     navButtons.forEach(button => {
         button.addEventListener('click', () => {
             showPage(button.dataset.page);
         });
     });
 
-    // --- REFERRAL LINK COPY ---
     copyReferralLinkBtn.addEventListener('click', () => {
+        if (!profileReferralLink.value) return;
         profileReferralLink.select();
-        document.execCommand('copy');
-        // tg.HapticFeedback.notificationOccurred('success'); // If available
-        showMessage('Referral link copied!', 'success', 'profile-username'); // Use any element for message
+        try {
+            document.execCommand('copy');
+            showMessage('Referral link copied!', 'success', 'profile-message');
+            tg.HapticFeedback.notificationOccurred('success');
+        } catch (err) {
+            showMessage('Failed to copy link.', 'error', 'profile-message');
+            console.error('Copy failed:', err);
+        }
+        window.getSelection().removeAllRanges(); // Deselect
     });
 
-
-    // --- MONETAG IN-APP INTERSTITIAL (Example, if needed) ---
-    // This is the auto-showing interstitial. You might not need this if you only use rewarded.
-    // if (typeof show_9338274 === 'function') {
-    //     show_9338274({
-    //         type: 'inApp',
-    //         inAppSettings: {
-    //             frequency: 2,     // Show automatically 2 ads
-    //             capping: 0.1,     // within 0.1 hours (6 minutes)
-    //             interval: 30,     // with a 30-second interval between them
-    //             timeout: 5,       // and a 5-second delay before the first one
-    //             everyPage: false  // 0 = session saved on navigation
-    //         }
-    //     });
-    // }
-
-    // Start the app
     initializeApp();
 });
