@@ -145,20 +145,24 @@ h2 {
     height: 100%;
     background-color: #4CAF50; /* Green for energy */
     width: 100%; /* Default to full */
-    border-radius: 7px 0 0 7px;
+    border-radius: 7px 0 0 7px; /* Corrected for LTR */
     transition: width 0.2s ease-in-out;
 }
-.cat-container {
+.cat-container { /* Renamed from .cat-container for clarity if you change animal often */
     position: relative; /* For floating +1s */
     margin: 30px auto;
     width: 200px; /* Adjust as needed */
     height: 200px; /* Adjust as needed */
+    display: flex; /* Added for better centering of image if it's not perfectly square */
+    justify-content: center; /* Added */
+    align-items: center; /* Added */
 }
-.cat-image {
-    width: 100%;
-    height: 100%;
+.cat-image { /* Renamed from .cat-image */
+    max-width: 100%; /* Use max-width/max-height to fit image within container */
+    max-height: 100%;
+    object-fit: contain; /* Ensures image aspect ratio is maintained */
     cursor: pointer;
-    border-radius: 50%; /* Circular cat */
+    border-radius: 15%; /* Slightly rounded, adjust as you like. 50% for circle. */
     box-shadow: 0 5px 15px rgba(0,0,0,0.2);
     transition: transform 0.1s ease;
     user-select: none; /* Prevent image selection */
@@ -194,11 +198,12 @@ h2 {
     color: var(--dark-blue);
 }
 #profile-referral-link {
-    width: calc(100% - 70px);
+    width: calc(100% - 80px); /* Adjusted for button size */
     padding: 8px;
     border: 1px solid #ccc;
     border-radius: 4px;
     margin-right: 5px;
+    box-sizing: border-box;
 }
 #copy-referral-link {
     padding: 8px 10px;
@@ -226,12 +231,17 @@ h2 {
 }
 .task-list li.completed {
     background-color: #e6ffe6; /* Light green for completed */
-    opacity: 0.7;
 }
 .task-list li.completed .task-action button {
-    background-color: #aaa;
-    cursor: not-allowed;
+    background-color: #5cb85c; /* Green for completed */
+    border-color: #4cae4c;
+    color: white;
+    cursor: default;
 }
+.task-list li.completed .task-action button:hover {
+    background-color: #5cb85c;
+}
+
 .task-title {
     font-weight: bold;
     color: var(--dark-blue);
@@ -249,8 +259,12 @@ h2 {
     cursor: pointer;
     transition: background-color 0.2s ease;
 }
-.task-action button:hover {
+.task-action button:hover:not(:disabled) {
     background-color: var(--dark-blue);
+}
+.task-action button:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
 }
 
 
@@ -310,11 +324,12 @@ h2 {
     font-weight: bold;
 }
 #withdraw-form input[type="text"], #withdraw-form select {
-    width: calc(100% - 22px); /* Account for padding and border */
+    width: 100%; 
     padding: 10px;
     margin-top: 5px;
     border: 1px solid #ccc;
     border-radius: 4px;
+    box-sizing: border-box;
 }
 #submit-withdrawal-button {
     background-color: #28a745;
@@ -342,6 +357,8 @@ h2 {
     padding: 10px;
     border-radius: 5px;
     text-align: center;
+    font-size: 0.9em;
+    min-height: 20px; /* So it doesn't jump around when empty/filled */
 }
 .message.success {
     background-color: #d4edda;
@@ -350,4 +367,8 @@ h2 {
 .message.error {
     background-color: #f8d7da;
     color: #721c24;
+}
+.message.info {
+    background-color: #cce5ff;
+    color: #004085;
 }
